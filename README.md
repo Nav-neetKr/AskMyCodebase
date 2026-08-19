@@ -3,12 +3,20 @@
 Chat privately with a codebase. Each person creates an account, indexes repositories,
 and can only list, poll, or ask questions about their own indexed data.
 
-## How it works
+**Live app:** [ask-my-codebase.onrender.com](https://ask-my-codebase.onrender.com/)
 
-```
-GitHub URL → clone → chunk (function/class-level) → embed (Voyage AI)
-                                                          ↓
-question → embed → cosine similarity search → top chunks → Gemini → answer + citations
+## Architecture
+
+```mermaid
+flowchart LR
+  U[Signed-in user] --> W[Ask My Codebase UI]
+  W <-->|Supabase Auth session| S[Supabase Auth]
+  W -->|Authenticated API calls| A[Node / Express on Render]
+  A -->|Clone public repository| G[GitHub]
+  A -->|Chunk and embed source| V[Voyage AI]
+  A <-->|RLS-protected repository indexes| D[(Supabase Postgres)]
+  A -->|Answer from retrieved code context| M[Google Gemini]
+  A --> W
 ```
 
 Supports Java, JavaScript/TypeScript, and Python out of the box (easy to extend —
@@ -17,10 +25,9 @@ see `SYMBOL_PATTERNS` in `src/chunker.js`).
 ## Run locally
 
 1. **Get API keys and auth settings**
- - Gemini: create an API key in https://aistudio.google.com/app/apikey (for answering questions)
+   - Gemini: create an API key in https://aistudio.google.com/app/apikey (for answering questions)
    - Voyage AI: https://dash.voyageai.com (for embeddings — has a free tier, and
-     Anthropic recommends it as the embeddings partner since Claude doesn't have
-     a native embeddings API)
+     provides the semantic-search vectors)
    - Supabase: create a project at https://supabase.com/dashboard. In **Project
      Settings → API**, copy the Project URL and publishable (or legacy `anon`) key.
      In **Authentication → URL Configuration**, add `http://localhost:3000` as a
@@ -91,9 +98,8 @@ extended inactivity and it has a 500 MB database limit.
 - **Chunking is regex/heuristic-based**, not a real AST parser (no tree-sitter
   dependency, which keeps deployment simple but means very unusual formatting
   can occasionally mis-detect a method boundary).
-- **Vector search is in-memory cosine similarity** over a JSON file — fine up
-  to a few thousand chunks (small-to-medium repos), but won't scale to huge
-  monorepos without a real vector DB.
+- **Vector search is in-memory cosine similarity** after loading a repository's
+  chunks from Supabase — fine for small-to-medium repos, but not for huge monorepos.
 - Indexing and embedding costs are shared by the deployment owner's API keys.
   For a public launch, add rate limiting and usage quotas before inviting many users.
 - Repository data is stored as JSONB in Supabase Postgres. It is practical for small
@@ -105,8 +111,12 @@ extended inactivity and it has a 500 MB database limit.
 server.js              Express app, API routes
 src/chunker.js          Splits files into function/class-level chunks
 src/embeddings.js       Voyage AI embedding calls
-src/vectorstore.js      JSON-file storage + cosine similarity search
+src/vectorstore.js      Supabase storage + cosine similarity search
 src/ingest.js           Orchestrates clone → chunk → embed → save
-src/chat.js             RAG: retrieve chunks → ask Claude → return cited answer
+src/chat.js             RAG: retrieve chunks → ask Gemini → return cited answer
 public/index.html       Chat UI
 ```
+
+---
+
+Created by **Navneet Kumar**
