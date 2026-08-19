@@ -11,6 +11,7 @@ app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.resolve("./public")));
 
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
@@ -102,6 +103,7 @@ app.post("/api/chat", requireUser, async (req, res) => {
   const { repoId, question } = req.body;
   if (!repoId || !question) return res.status(400).json({ error: "repoId and question are required" });
   if (!VOYAGE_API_KEY) return res.status(500).json({ error: "VOYAGE_API_KEY not configured on server" });
+  if (!GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY not configured on server" });
 
   try {
     const result = await answerQuestion(repoId, req.accessToken, question, VOYAGE_API_KEY);

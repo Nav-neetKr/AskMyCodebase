@@ -8,7 +8,7 @@ and can only list, poll, or ask questions about their own indexed data.
 ```
 GitHub URL → clone → chunk (function/class-level) → embed (Voyage AI)
                                                           ↓
-question → embed → cosine similarity search → top chunks → Claude → answer + citations
+question → embed → cosine similarity search → top chunks → Gemini → answer + citations
 ```
 
 Supports Java, JavaScript/TypeScript, and Python out of the box (easy to extend —
@@ -17,7 +17,7 @@ see `SYMBOL_PATTERNS` in `src/chunker.js`).
 ## Run locally
 
 1. **Get API keys and auth settings**
-   - Anthropic: https://console.anthropic.com (for answering questions)
+ - Gemini: create an API key in https://aistudio.google.com/app/apikey (for answering questions)
    - Voyage AI: https://dash.voyageai.com (for embeddings — has a free tier, and
      Anthropic recommends it as the embeddings partner since Claude doesn't have
      a native embeddings API)
@@ -61,7 +61,7 @@ rows private to their authenticated Supabase account.
 3. At https://dashboard.render.com, choose **New → Blueprint**, connect the GitHub
    repository, and select its `render.yaml`.
 4. Enter the four secret environment variables when Render asks for them:
-   `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_URL`, and
+   `GEMINI_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_URL`, and
    `SUPABASE_ANON_KEY`. Use the Supabase **anon/publishable** key, never the
    `service_role` key.
 5. Create the service. It runs on Render's Free plan and needs no persistent disk.
@@ -79,8 +79,10 @@ extended inactivity and it has a 500 MB database limit.
 - Each repository record is tagged with the authenticated user's immutable
   Supabase user ID. API routes filter and authorize against that ID, so one user
   cannot access another user's repository list, ingest job, or chat context.
-- The Supabase anon key is safe to expose to the browser. Keep Anthropic, Voyage,
+- The Supabase anon key is safe to expose to the browser. Keep Gemini, Voyage,
   and any Supabase `service_role` key private in deployment secrets.
+- Gemini's free tier may use submitted content to improve Google's products. Do
+  not use that tier for source code you are not comfortable sending to Google.
 - This version accepts public HTTPS GitHub repository URLs only; it does not
   accept or retain GitHub credentials for private Git repositories.
 
