@@ -93,7 +93,7 @@ extended inactivity and it has a 500 MB database limit.
 - This version accepts public HTTPS GitHub repository URLs only; it does not
   accept or retain GitHub credentials for private Git repositories.
 
-## Known limitations (worth mentioning if you demo this in an interview)
+## Known limitations
 
 - **Chunking is regex/heuristic-based**, not a real AST parser (no tree-sitter
   dependency, which keeps deployment simple but means very unusual formatting
