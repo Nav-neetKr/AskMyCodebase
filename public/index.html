@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ask My Codebase</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #4f8cff;
+    --accent-dim: #2b3f66;
+    --mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  #userBar { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+  #userBar button { padding: 7px 10px; }
+  #auth { margin: auto; width: min(420px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 24px; }
+  #auth h2 { margin: 0 0 8px; font-size: 20px; }
+  #auth p { color: var(--muted); font-size: 13px; line-height: 1.5; }
+  #auth input { width: 100%; margin: 6px 0; }
+  #authActions { display: flex; gap: 8px; margin-top: 10px; }
+  #authStatus { min-height: 18px; margin-top: 12px; color: var(--muted); font-size: 12px; }
+  .hidden { display: none !important; }
+
+  .setup {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  input[type=text] {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 13px;
+    flex: 1;
+    min-width: 260px;
+  }
+  select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  button {
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { background: var(--accent-dim); cursor: not-allowed; }
+  #status { font-size: 12px; color: var(--muted); padding: 0 24px; min-height: 18px; }
+
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .msg { max-width: 720px; }
+  .msg.user { align-self: flex-end; }
+  .msg .bubble {
+    padding: 12px 16px;
+    border-radius: 10px;
+    line-height: 1.5;
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+  .msg.user .bubble { background: var(--accent); color: white; }
+  .msg.bot .bubble { background: var(--panel); border: 1px solid var(--border); }
+  .sources {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .source-chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .inputbar {
+    padding: 16px 24px 24px;
+    display: flex;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+  }
+  #question {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="dot"></div>
+  <h1>Ask My Codebase</h1>
+  <div id="userBar" class="hidden"><span id="userEmail"></span><button onclick="signOut()">Sign out</button></div>
+</header>
+
+<main id="auth">
+  <h2>Your private codebase chat</h2>
+  <p>Sign in to keep your indexed repositories private to your account.</p>
+  <input type="email" id="email" placeholder="Email address" autocomplete="email" />
+  <input type="password" id="password" placeholder="Password (at least 6 characters)" autocomplete="current-password" />
+  <div id="authActions"><button onclick="signIn()">Sign in</button><button onclick="signUp()">Create account</button></div>
+  <div id="authStatus"></div>
+</main>
+
+<main id="app" class="hidden">
+<div class="setup">
+  <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo.git" />
+  <button id="ingestBtn" onclick="startIngest()">Index repo</button>
+  <select id="repoSelect" onchange="onRepoSelect()">
+    <option value="">Select indexed repo...</option>
+  </select>
+</div>
+<div id="status"></div>
+
+<div id="chat"></div>
+
+<div class="inputbar">
+  <input type="text" id="question" placeholder="e.g. what does GarFacade do?" onkeydown="if(event.key==='Enter') askQuestion()" />
+  <button onclick="askQuestion()">Ask</button>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+let currentRepoId = null;
+let supabase;
+
+async function initialize() {
+  const config = await fetch('/api/config').then(r => r.json());
+  if (!config.supabaseUrl || !config.supabaseAnonKey) {
+    document.getElementById('authStatus').textContent = 'Authentication is not configured. Ask the site owner to add Supabase environment variables.';
+    return;
+  }
+  supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) showApp(session.user);
+  supabase.auth.onAuthStateChange((_event, session) => session ? showApp(session.user) : showAuth());
+}
+
+function showApp(user) {
+  document.getElementById('auth').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('userBar').classList.remove('hidden');
+  document.getElementById('userEmail').textContent = user.email;
+  refreshRepoList();
+}
+
+function showAuth() {
+  currentRepoId = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('auth').classList.remove('hidden');
+  document.getElementById('userBar').classList.add('hidden');
+}
+
+async function signIn() {
+  const { error } = await supabase.auth.signInWithPassword(credentials());
+  document.getElementById('authStatus').textContent = error ? error.message : '';
+}
+
+async function signUp() {
+  const { data, error } = await supabase.auth.signUp(credentials());
+  document.getElementById('authStatus').textContent = error ? error.message : data.session ? '' : 'Check your inbox to confirm your email, then sign in.';
+}
+
+function credentials() { return { email: document.getElementById('email').value.trim(), password: document.getElementById('password').value }; }
+async function signOut() { await supabase.auth.signOut(); }
+
+async function api(url, options = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = { ...(options.headers || {}), Authorization: `Bearer ${session?.access_token || ''}` };
+  const response = await fetch(url, { ...options, headers });
+  const data = await response.json();
+  if (response.status === 401) await supabase.auth.signOut();
+  return { response, data };
+}
+
+async function refreshRepoList() {
+  const { data: repos } = await api('/api/repos');
+  const select = document.getElementById('repoSelect');
+  select.replaceChildren(new Option('Select indexed repo...', ''));
+  repos.forEach(r => select.add(new Option(`${r.repoName} (${r.chunkCount} chunks)`, r.repoId)));
+}
+
+function onRepoSelect() {
+  currentRepoId = document.getElementById('repoSelect').value;
+}
+
+async function startIngest() {
+  const repoUrl = document.getElementById('repoUrl').value.trim();
+  if (!repoUrl) return;
+  const btn = document.getElementById('ingestBtn');
+  btn.disabled = true;
+  const statusEl = document.getElementById('status');
+
+  const { data: ingest } = await api('/api/ingest', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ repoUrl })
+  });
+  const { jobId, error } = ingest;
+  if (error) { statusEl.textContent = 'Error: ' + error; btn.disabled = false; return; }
+
+  const poll = setInterval(async () => {
+    const { data: s } = await api('/api/ingest/status?jobId=' + encodeURIComponent(jobId));
+    statusEl.textContent = s.message || s.stage;
+    if (s.stage === 'complete') {
+      clearInterval(poll);
+      btn.disabled = false;
+      currentRepoId = s.repoId;
+      await refreshRepoList();
+      document.getElementById('repoSelect').value = s.repoId;
+      statusEl.textContent = `Indexed ${s.repoName} — ${s.chunkCount} chunks. Ask away.`;
+    } else if (s.stage === 'error') {
+      clearInterval(poll);
+      btn.disabled = false;
+      statusEl.textContent = 'Error: ' + s.message;
+    }
+  }, 1200);
+}
+
+function addMessage(role, text, sources) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  div.appendChild(bubble);
+  if (sources && sources.length) {
+    const src = document.createElement('div');
+    src.className = 'sources';
+    sources.forEach(s => {
+      const chip = document.createElement('span');
+      chip.className = 'source-chip';
+      chip.textContent = `${s.file}:${s.startLine}-${s.endLine}`;
+      src.appendChild(chip);
+    });
+    div.appendChild(src);
+  }
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function askQuestion() {
+  const input = document.getElementById('question');
+  const question = input.value.trim();
+  if (!question) return;
+  if (!currentRepoId) { alert('Index or select a repo first.'); return; }
+  input.value = '';
+  addMessage('user', question);
+
+  const { data } = await api('/api/chat', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ repoId: currentRepoId, question })
+  });
+  if (data.error) { addMessage('bot', 'Error: ' + data.error); return; }
+  addMessage('bot', data.answer, data.sources);
+}
+
+initialize();
+</script>
+
+</body>
+</html>
