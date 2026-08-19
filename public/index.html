@@ -174,7 +174,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 let currentRepoId = null;
-let supabase;
+let supabaseClient;
 
 async function initialize() {
   const config = await fetch('/api/config').then(r => r.json());
@@ -182,10 +182,10 @@ async function initialize() {
     document.getElementById('authStatus').textContent = 'Authentication is not configured. Ask the site owner to add Supabase environment variables.';
     return;
   }
-  supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-  const { data: { session } } = await supabase.auth.getSession();
+  supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) showApp(session.user);
-  supabase.auth.onAuthStateChange((_event, session) => session ? showApp(session.user) : showAuth());
+  supabaseClient.auth.onAuthStateChange((_event, session) => session ? showApp(session.user) : showAuth());
 }
 
 function showApp(user) {
@@ -204,24 +204,24 @@ function showAuth() {
 }
 
 async function signIn() {
-  const { error } = await supabase.auth.signInWithPassword(credentials());
+  const { error } = await supabaseClient.auth.signInWithPassword(credentials());
   document.getElementById('authStatus').textContent = error ? error.message : '';
 }
 
 async function signUp() {
-  const { data, error } = await supabase.auth.signUp(credentials());
+  const { data, error } = await supabaseClient.auth.signUp(credentials());
   document.getElementById('authStatus').textContent = error ? error.message : data.session ? '' : 'Check your inbox to confirm your email, then sign in.';
 }
 
 function credentials() { return { email: document.getElementById('email').value.trim(), password: document.getElementById('password').value }; }
-async function signOut() { await supabase.auth.signOut(); }
+async function signOut() { await supabaseClient.auth.signOut(); }
 
 async function api(url, options = {}) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   const headers = { ...(options.headers || {}), Authorization: `Bearer ${session?.access_token || ''}` };
   const response = await fetch(url, { ...options, headers });
   const data = await response.json();
-  if (response.status === 401) await supabase.auth.signOut();
+  if (response.status === 401) await supabaseClient.auth.signOut();
   return { response, data };
 }
 
