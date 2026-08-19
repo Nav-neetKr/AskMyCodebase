@@ -7,7 +7,7 @@ import { chunkRepo } from "./chunker.js";
 import { embedChunks } from "./embeddings.js";
 import { saveRepoChunks } from "./vectorstore.js";
 
-export async function ingestRepo(repoUrl, ownerId, voyageApiKey, onProgress = () => {}) {
+export async function ingestRepo(repoUrl, ownerId, accessToken, voyageApiKey, onProgress = () => {}) {
   const repoId = uuidv4();
   const tmpDir = path.join(os.tmpdir(), `amc-${repoId}`);
 
@@ -25,7 +25,7 @@ export async function ingestRepo(repoUrl, ownerId, voyageApiKey, onProgress = ()
     const embedded = await embedChunks(chunks, voyageApiKey);
 
     const repoName = repoUrl.split("/").filter(Boolean).pop().replace(/\.git$/, "");
-    saveRepoChunks(repoId, embedded, { repoUrl, repoName, ownerId, indexedAt: new Date().toISOString() });
+    await saveRepoChunks(repoId, embedded, { repoUrl, repoName, ownerId, indexedAt: new Date().toISOString() }, accessToken);
 
     onProgress({ stage: "done", message: "Ready to chat." });
     return { repoId, repoName, chunkCount: chunks.length };

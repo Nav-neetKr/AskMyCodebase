@@ -42,6 +42,7 @@ async function requireUser(req, res, next) {
     const user = await response.json();
     if (!user?.id) return res.status(401).json({ error: "Invalid user session" });
     req.user = { id: user.id, email: user.email };
+    req.accessToken = authorization.slice("Bearer ".length);
     next();
   } catch (err) {
     console.error("Authentication check failed", err);
@@ -71,7 +72,7 @@ app.post("/api/ingest", requireUser, async (req, res) => {
   const jobId = crypto.randomUUID();
   jobs.set(jobId, { ownerId: req.user.id, stage: "starting", message: "Starting..." });
 
-  ingestRepo(repoUrl, req.user.id, VOYAGE_API_KEY, (progress) =>
+  ingestRepo(repoUrl, req.user.id, req.accessToken, VOYAGE_API_KEY, (progress) =>
     jobs.set(jobId, { ownerId: req.user.id, ...progress })
   )
     .then((result) => jobs.set(jobId, { ownerId: req.user.id, stage: "complete", ...result }))
@@ -88,8 +89,13 @@ app.get("/api/ingest/status", requireUser, (req, res) => {
   res.json(safeJob);
 });
 
-app.get("/api/repos", requireUser, (req, res) => {
-  res.json(listRepos(req.user.id));
+app.get("/api/repos", requireUser, async (req, res) => {
+  try {
+    res.json(await listRepos(req.accessToken));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post("/api/chat", requireUser, async (req, res) => {
@@ -98,7 +104,7 @@ app.post("/api/chat", requireUser, async (req, res) => {
   if (!VOYAGE_API_KEY) return res.status(500).json({ error: "VOYAGE_API_KEY not configured on server" });
 
   try {
-    const result = await answerQuestion(repoId, req.user.id, question, VOYAGE_API_KEY);
+    const result = await answerQuestion(repoId, req.accessToken, question, VOYAGE_API_KEY);
     res.json(result);
   } catch (err) {
     console.error(err);

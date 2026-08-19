@@ -2,11 +2,7 @@ services:
   - type: web
     name: ask-my-codebase
     runtime: docker
-    plan: starter
-    disk:
-      name: codebase-data
-      mountPath: /app/data
-      sizeGB: 1
+    plan: free
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false

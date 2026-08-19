@@ -46,14 +46,15 @@ see `SYMBOL_PATTERNS` in `src/chunker.js`).
 
 ## Deploy with Render
 
-This repository contains a `Dockerfile` and `render.yaml`, so Render is the most
-direct deployment option. The included persistent disk is important: it preserves
-the locally stored vector files across restarts. (The files are scoped
-by account but are **not encrypted at rest by this app**; use a host/project whose
-storage security meets your requirements.)
+This repository contains a `Dockerfile` and a free-tier `render.yaml`. Repository
+indexes are stored in Supabase Postgres, not on Render's filesystem, so they survive
+Render restarts and free-service spin-downs. Row Level Security keeps each user's
+rows private to their authenticated Supabase account.
 
 1. Push this project to a GitHub repository. Do not commit `.env`.
-2. In Supabase, open **Authentication → URL Configuration** and set the Site URL
+2. In Supabase, open **SQL Editor → New query**, paste and run
+   [`supabase/schema.sql`](supabase/schema.sql). This creates the repository table
+   and its per-user Row Level Security policies. Then open **Authentication → URL Configuration** and set the Site URL
    to your eventual Render URL (for example `https://ask-my-codebase.onrender.com`).
    Add that same URL to Redirect URLs. Configure your preferred email confirmation
    behavior under **Authentication → Providers → Email**.
@@ -63,14 +64,13 @@ storage security meets your requirements.)
    `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_URL`, and
    `SUPABASE_ANON_KEY`. Use the Supabase **anon/publishable** key, never the
    `service_role` key.
-5. Create the service. Render builds the Docker image and mounts a 1 GB persistent
-   disk at `/app/data`. Open the generated URL, create an account, and test an
-   index-and-chat flow.
+5. Create the service. It runs on Render's Free plan and needs no persistent disk.
+   Open the generated URL, create an account, and test an index-and-chat flow.
 
-Render persistent disks require a paid service plan. For another Docker host,
-deploy this image, set the same four variables, and mount durable storage at
-`/app/data`. Without that volume, users' indexes disappear when the service is
-restarted or redeployed.
+Render's Free service can take around a minute to wake after 15 minutes of
+inactivity. This does not delete indexes, because they live in Supabase. The
+Supabase Free plan is suitable for a hobby deployment, but its projects pause after
+extended inactivity and it has a 500 MB database limit.
 
 ## Privacy and security model
 
@@ -94,8 +94,8 @@ restarted or redeployed.
   monorepos without a real vector DB.
 - Indexing and embedding costs are shared by the deployment owner's API keys.
   For a public launch, add rate limiting and usage quotas before inviting many users.
-- Repository data is per-user but lives in JSON files on the application disk.
-  A managed database/object store is recommended for high-scale or compliance-sensitive use.
+- Repository data is stored as JSONB in Supabase Postgres. It is practical for small
+  codebases and hobby use; use a dedicated vector database for very large repositories.
 
 ## Project structure
 

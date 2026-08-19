@@ -4,9 +4,9 @@ import { search } from "./vectorstore.js";
 
 const anthropic = new Anthropic(); // reads ANTHROPIC_API_KEY from env
 
-export async function answerQuestion(repoId, ownerId, question, voyageApiKey) {
+export async function answerQuestion(repoId, accessToken, question, voyageApiKey) {
   const queryEmbedding = await embedQuery(question, voyageApiKey);
-  const matches = search(repoId, ownerId, queryEmbedding, 8);
+  const matches = await search(repoId, accessToken, queryEmbedding, 8);
 
   const context = matches
     .map(
